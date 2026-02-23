@@ -13,7 +13,7 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_MhqLKan6u4I
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Initialize Gemini
-const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || "";
+const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
 const ai = new GoogleGenAI({ apiKey: geminiKey });
 
 async function startServer() {
