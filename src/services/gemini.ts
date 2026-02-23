@@ -22,7 +22,7 @@ export const analyzeDream = async (content: string) => {
 export const generateDreamImage = async (content: string) => {
   const response = await fetch('/api/visualize', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
   });
 
