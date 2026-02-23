@@ -76,7 +76,7 @@ async function startServer() {
     try {
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash", // Используем более стабильную модель
+        model: "gemini-3-flash-preview", // Используем разрешенную модель
         contents: `Ты — эксперт по психоанализу и толкованию сновидений. 
 Проанализируй это сновидение с символической и психологической точки зрения. 
 Дай глубокое представление о возможных значениях и эмоциональных подтекстах. 
@@ -98,7 +98,7 @@ async function startServer() {
     try {
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash-image", // Используем разрешенную модель для картинок
         contents: {
           parts: [{ text: `Сюрреалистичная, эфирная и художественная визуализация следующего сна: ${content}. Стиль должен быть живописным, атмосферным и слегка абстрактным, как воспоминание или видение. Без текста на изображении.` }],
         },
