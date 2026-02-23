@@ -21,124 +21,84 @@ const getGeminiAI = () => {
   return new GoogleGenAI({ apiKey: geminiKey });
 };
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+app.use(express.json({ limit: '50mb' }));
 
-  app.use(express.json({ limit: '50mb' }));
-
-  // API Routes
-  app.get("/api/dreams", async (req, res) => {
-    try {
-      const { data, error } = await supabase
-        .from("dreams")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/dreams", async (req, res) => {
-    try {
-      const { title, content, date, mood, image_url, audio_url, analysis } = req.body;
-      const { data, error } = await supabase
-        .from("dreams")
-        .insert([{ title, content, date, mood, image_url, audio_url, analysis }])
-        .select();
-      
-      if (error) throw error;
-      res.json({ id: data[0].id });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.delete("/api/dreams/:id", async (req, res) => {
-    try {
-      const { error } = await supabase
-        .from("dreams")
-        .delete()
-        .eq("id", req.params.id);
-      
-      if (error) throw error;
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/analyze", async (req, res) => {
-    const { content } = req.body;
-    try {
-      const ai = getGeminiAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", // Используем разрешенную модель
-        contents: `Ты — эксперт по психоанализу и толкованию сновидений. 
-Проанализируй это сновидение с символической и психологической точки зрения. 
-Дай глубокое представление о возможных значениях и эмоциональных подтекстах. 
-
-ВАЖНО: Весь ответ должен быть СТРОГО на русском языке. Не используй английский язык в заголовках или пояснениях.
-Ответ оформи в красивом формате Markdown.
-
-Сон: ${content}`,
-      });
-      res.json({ text: response.text });
-    } catch (error: any) {
-      console.error("Gemini Error:", error);
-      res.status(500).json({ error: error.message || "Ошибка при анализе сна" });
-    }
-  });
-
-  app.post("/api/visualize", async (req, res) => {
-    const { content } = req.body;
-    try {
-      const ai = getGeminiAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image", // Используем разрешенную модель для картинок
-        contents: {
-          parts: [{ text: `Сюрреалистичная, эфирная и художественная визуализация следующего сна: ${content}. Стиль должен быть живописным, атмосферным и слегка абстрактным, как воспоминание или видение. Без текста на изображении.` }],
-        },
-        config: { imageConfig: { aspectRatio: "16:9" } },
-      });
-      
-      let imageUrl = null;
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        }
-      }
-      res.json({ imageUrl });
-    } catch (error: any) {
-      console.error("Gemini Visual Error:", error);
-      res.status(500).json({ error: error.message || "Ошибка при создании изображения" });
-    }
-  });
-
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
-    });
+// API Routes
+app.get("/api/dreams", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("dreams").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
+});
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+app.post("/api/dreams", async (req, res) => {
+  try {
+    const { title, content, date, mood, image_url, audio_url, analysis } = req.body;
+    const { data, error } = await supabase.from("dreams").insert([{ title, content, date, mood, image_url, audio_url, analysis }]).select();
+    if (error) throw error;
+    res.json({ id: data[0].id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-  return app;
+app.delete("/api/dreams/:id", async (req, res) => {
+  try {
+    const { error } = await supabase.from("dreams").delete().eq("id", req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/analyze", async (req, res) => {
+  const { content } = req.body;
+  try {
+    const ai = getGeminiAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${content}. Ответ на русском в Markdown.`,
+    });
+    res.json({ text: response.text });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/visualize", async (req, res) => {
+  const { content } = req.body;
+  try {
+    const ai = getGeminiAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: { parts: [{ text: `Surreal dream visualization: ${content}` }] },
+      config: { imageConfig: { aspectRatio: "16:9" } },
+    });
+    const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+    res.json({ imageUrl: part ? `data:image/png;base64,${part.inlineData.data}` : null });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Development vs Production
+if (process.env.NODE_ENV !== "production") {
+  const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
+  app.use(vite.middlewares);
+} else {
+  app.use(express.static(path.join(__dirname, "dist")));
+  app.get("*", (req, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
 }
 
-export const appPromise = startServer();
-export default appPromise;
+// Only listen if not in Vercel
+if (process.env.VERCEL !== "1") {
+  const PORT = 3000;
+  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
+}
+
+export default app;
