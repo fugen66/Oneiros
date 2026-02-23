@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Initialize Supabase client
+// Initialize Supabase
 const supabaseUrl = process.env.SUPABASE_URL || "https://vjyqbkgoxyjnitwyajms.supabase.co";
 const supabaseKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_MhqLKan6u4IHHz9cORb9-Q_1VSTsI_Z";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -15,9 +15,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Initialize Gemini
 const getGeminiAI = () => {
   const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    throw new Error("GEMINI_API_KEY or API_KEY is not set");
-  }
+  if (!geminiKey) throw new Error("API_KEY is missing in Vercel settings");
   return new GoogleGenAI({ apiKey: geminiKey });
 };
 
@@ -46,23 +44,12 @@ app.post("/api/dreams", async (req, res) => {
   }
 });
 
-app.delete("/api/dreams/:id", async (req, res) => {
-  try {
-    const { error } = await supabase.from("dreams").delete().eq("id", req.params.id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.post("/api/analyze", async (req, res) => {
-  const { content } = req.body;
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${content}. Ответ на русском в Markdown.`,
+      contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     res.json({ text: response.text });
   } catch (error: any) {
@@ -71,12 +58,11 @@ app.post("/api/analyze", async (req, res) => {
 });
 
 app.post("/api/visualize", async (req, res) => {
-  const { content } = req.body;
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
-      contents: { parts: [{ text: `Surreal dream visualization: ${content}` }] },
+      contents: { parts: [{ text: `Surreal dream visualization: ${req.body.content}` }] },
       config: { imageConfig: { aspectRatio: "16:9" } },
     });
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
