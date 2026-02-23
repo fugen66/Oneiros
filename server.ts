@@ -13,8 +13,13 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_MhqLKan6u4I
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Initialize Gemini
-const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey: geminiKey });
+const getGeminiAI = () => {
+  const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    throw new Error("GEMINI_API_KEY or API_KEY is not set");
+  }
+  return new GoogleGenAI({ apiKey: geminiKey });
+};
 
 async function startServer() {
   const app = express();
@@ -24,41 +29,54 @@ async function startServer() {
 
   // API Routes
   app.get("/api/dreams", async (req, res) => {
-    const { data, error } = await supabase
-      .from("dreams")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
+    try {
+      const { data, error } = await supabase
+        .from("dreams")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/dreams", async (req, res) => {
-    const { title, content, date, mood, image_url, audio_url, analysis } = req.body;
-    const { data, error } = await supabase
-      .from("dreams")
-      .insert([{ title, content, date, mood, image_url, audio_url, analysis }])
-      .select();
-    
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ id: data[0].id });
+    try {
+      const { title, content, date, mood, image_url, audio_url, analysis } = req.body;
+      const { data, error } = await supabase
+        .from("dreams")
+        .insert([{ title, content, date, mood, image_url, audio_url, analysis }])
+        .select();
+      
+      if (error) throw error;
+      res.json({ id: data[0].id });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/dreams/:id", async (req, res) => {
-    const { error } = await supabase
-      .from("dreams")
-      .delete()
-      .eq("id", req.params.id);
-    
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true });
+    try {
+      const { error } = await supabase
+        .from("dreams")
+        .delete()
+        .eq("id", req.params.id);
+      
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/analyze", async (req, res) => {
     const { content } = req.body;
     try {
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-1.5-flash", // Используем более стабильную модель
         contents: `Ты — эксперт по психоанализу и толкованию сновидений. 
 Проанализируй это сновидение с символической и психологической точки зрения. 
 Дай глубокое представление о возможных значениях и эмоциональных подтекстах. 
@@ -70,15 +88,17 @@ async function startServer() {
       });
       res.json({ text: response.text });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Gemini Error:", error);
+      res.status(500).json({ error: error.message || "Ошибка при анализе сна" });
     }
   });
 
   app.post("/api/visualize", async (req, res) => {
     const { content } = req.body;
     try {
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image",
+        model: "gemini-1.5-flash",
         contents: {
           parts: [{ text: `Сюрреалистичная, эфирная и художественная визуализация следующего сна: ${content}. Стиль должен быть живописным, атмосферным и слегка абстрактным, как воспоминание или видение. Без текста на изображении.` }],
         },
@@ -94,7 +114,8 @@ async function startServer() {
       }
       res.json({ imageUrl });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Gemini Visual Error:", error);
+      res.status(500).json({ error: error.message || "Ошибка при создании изображения" });
     }
   });
 
