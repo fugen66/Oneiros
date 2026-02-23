@@ -26,6 +26,7 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
   const [isVisualizing, setIsVisualizing] = useState(false);
   const [analysis, setAnalysis] = useState<string | undefined>();
   const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   
   const recognitionRef = useRef<any>(null);
@@ -64,11 +65,13 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
   const handleAnalyze = async () => {
     if (!content) return;
     setIsAnalyzing(true);
+    setError(null);
     try {
       const result = await analyzeDream(content);
       setAnalysis(result);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Ошибка при анализе");
     } finally {
       setIsAnalyzing(false);
     }
@@ -77,11 +80,13 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
   const handleVisualize = async () => {
     if (!content) return;
     setIsVisualizing(true);
+    setError(null);
     try {
       const result = await generateDreamImage(content);
       if (result) setImageUrl(result);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Ошибка при визуализации");
     } finally {
       setIsVisualizing(false);
     }
@@ -197,6 +202,16 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
             Сохранить в дневник
           </button>
         </div>
+
+        {error && (
+          <motion.p 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20"
+          >
+            {error}
+          </motion.p>
+        )}
 
         <AnimatePresence>
           {(analysis || imageUrl) && (
