@@ -1,49 +1,102 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Initialize Supabase
+const supabaseUrl = process.env.SUPABASE_URL || "https://vjyqbkgoxyjnitwyajms.supabase.co";
+const supabaseKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_MhqLKan6u4IHHz9cORb9-Q_1VSTsI_Z";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Initialize Gemini
+const getGeminiAI = () => {
+  const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!geminiKey) throw new Error("API_KEY is missing in Vercel settings");
+  return new GoogleGenAI({ apiKey: geminiKey });
+};
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 
-const supabase = createClient(
-  process.env.SUPABASE_URL || "",
-  process.env.SUPABASE_ANON_KEY || ""
-);
+// API Routes
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-const getGeminiAI = () => {
-  const key = process.env.API_KEY || process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("Missing API Key");
-  return new GoogleGenAI({ apiKey: key });
-};
+app.get("/api/dreams", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("dreams").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/dreams", async (req, res) => {
+  try {
+    const { title, content, date, mood, image_url, audio_url, analysis } = req.body;
+    const { data, error } = await supabase.from("dreams").insert([{ title, content, date, mood, image_url, audio_url, analysis }]).select();
+    if (error) throw error;
+    res.json({ id: data[0].id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", // Самая стабильная модель для бесплатных ключей
-      contents: `Проанализируй сон: ${req.body.content}. Ответ на русском, кратко, в Markdown.`
+      model: "gemini-1.5-flash", 
+      contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     res.json({ text: response.text });
   } catch (error: any) {
-    res.status(500).json({ error: "ИИ временно недоступен. Попробуйте позже." });
+    console.error("Gemini Analyze Error:", error);
+    let message = error.message || "Ошибка ИИ";
+    // Try to extract a cleaner message if it's a stringified JSON
+    try {
+      if (message.includes('{"error":')) {
+        const match = message.match(/\{"error":.*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (parsed.error?.message) message = parsed.error.message;
+        }
+      }
+    } catch (e) {}
+    res.status(500).json({ error: message });
   }
 });
 
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
-    const clean = content.substring(0, 100).replace(/[^a-zA-Zа-яА-Я0-9 ]/g, '');
-    const imageUrl = `https://image.pollinations.ai/prompt/surreal_dream_style_${encodeURIComponent(clean)}?width=1024&height=576&nologo=true`;
+    // Очищаем текст от лишних символов, чтобы не сломать URL
+    const cleanContent = content.substring(0, 200).replace(/[^a-zA-Zа-яА-Я0-9 ]/g, '');
+    const prompt = encodeURIComponent(`surreal dream, ethereal atmosphere, ${cleanContent}, digital art, highly detailed`);
+    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+    
     res.json({ imageUrl });
-  } catch (error) {
-    res.status(500).json({ error: "Ошибка визуализации" });
+  } catch (error: any) {
+    console.error("Visualization Error:", error);
+    res.status(500).json({ error: "Не удалось создать визуализацию" });
   }
 });
 
-// Для работы с Supabase напрямую из фронта (если нужно) или через прокси
-app.get("/api/dreams", async (req, res) => {
-  const { data } = await supabase.from("dreams").select("*").order("created_at", { ascending: false });
-  res.json(data || []);
-});
+// Development vs Production
+if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
+  // Динамический импорт Vite, чтобы он не ломал билд в продакшене
+  const { createServer: createViteServer } = await import("vite");
+  const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
+  app.use(vite.middlewares);
+}
+
+// Only listen if not in Vercel
+if (process.env.VERCEL !== "1") {
+  const PORT = 3000;
+  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
+}
 
 export default app;
