@@ -62,14 +62,29 @@ app.post("/api/visualize", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: { parts: [{ text: `Surreal dream visualization: ${req.body.content}` }] },
-      config: { imageConfig: { aspectRatio: "16:9" } },
+      model: "gemini-3-pro-image-preview", // Самая мощная модель для генерации
+      contents: { parts: [{ text: `Surreal, ethereal, and artistic dream visualization: ${req.body.content}. Style: painterly, atmospheric, abstract, no text.` }] },
+      config: { 
+        imageConfig: { aspectRatio: "16:9", imageSize: "1K" }
+      },
     });
+    
+    // Ищем часть с картинкой
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-    res.json({ imageUrl: part ? `data:image/png;base64,${part.inlineData.data}` : null });
+    if (part) {
+      res.json({ imageUrl: `data:image/png;base64,${part.inlineData.data}` });
+    } else {
+      res.status(404).json({ error: "ИИ не смог создать изображение для этого описания" });
+    }
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("Gemini Visual Error:", error);
+    // Если ошибка от Google пришла в виде JSON-строки, пробуем её очистить
+    let message = error.message;
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.error?.message) message = parsed.error.message;
+    } catch (e) {}
+    res.status(500).json({ error: message });
   }
 });
 
