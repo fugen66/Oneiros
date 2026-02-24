@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
 import path from "path";
@@ -23,6 +22,8 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 
 // API Routes
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
 app.get("/api/dreams", async (req, res) => {
   try {
     const { data, error } = await supabase.from("dreams").select("*").order("created_at", { ascending: false });
@@ -48,7 +49,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     res.json({ text: response.text });
@@ -61,7 +62,7 @@ app.post("/api/visualize", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model: "gemini-2.0-flash",
       contents: { parts: [{ text: `Surreal dream visualization: ${req.body.content}` }] },
       config: { imageConfig: { aspectRatio: "16:9" } },
     });
@@ -73,13 +74,11 @@ app.post("/api/visualize", async (req, res) => {
 });
 
 // Development vs Production
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
+  // Динамический импорт Vite, чтобы он не ломал билд в продакшене
+  const { createServer: createViteServer } = await import("vite");
   const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
   app.use(vite.middlewares);
-} else {
-  // В Vercel статика отдается автоматически, этот блок для локального теста билда
-  app.use(express.static(path.join(__dirname, "../dist")));
-  app.get("*", (req, res) => res.sendFile(path.join(__dirname, "../dist", "index.html")));
 }
 
 // Only listen if not in Vercel
