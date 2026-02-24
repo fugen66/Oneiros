@@ -49,7 +49,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     res.json({ text: response.text });
@@ -62,7 +62,7 @@ app.post("/api/visualize", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash-image",
       contents: { parts: [{ text: `Surreal dream visualization: ${req.body.content}` }] },
       config: { imageConfig: { aspectRatio: "16:9" } },
     });
