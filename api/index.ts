@@ -1,14 +1,12 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
-import path from "path";
+import path from "url";
 import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 // Initialize Supabase
-const supabaseUrl = process.env.SUPABASE_URL || "https://vjyqbkgoxyjnitwyajms.supabase.co";
-const supabaseKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_MhqLKan6u4IHHz9cORb9-Q_1VSTsI_Z";
+const supabaseUrl = process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Initialize Gemini
@@ -49,28 +47,74 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // Используем правильную модель
+      model: "gemini-3-flash-preview",
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     res.json({ text: response.text });
   } catch (error: any) {
     console.error("Gemini Analyze Error:", error);
-    res.status(500).json({ error: error.message || "Ошибка ИИ" });
+    res.status(500).json({ error: "ИИ временно перегружен или недоступен. Попробуйте через минуту." });
   }
 });
 
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
-    // Очистка текста для безопасного URL
-    const safeContent = content ? content.substring(0, 300).replace(/[^\w\sа-яА-Я]/gi, ' ') : "mystical dream";
-    const prompt = encodeURIComponent(`surreal artistic dream visualization, ${safeContent}, cinematic, 4k`);
-    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&nologo=true&seed=${Date.now()}`;
+    const ai = getGeminiAI();
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: {
+        parts: [{ text: `A vivid, detailed, and realistic visualization of the following dream scene: "${content}". The image should be cinematic, capturing the specific elements and atmosphere described, with high-quality textures and lighting. Avoid generic surrealism unless specified in the dream.` }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    let imageUrl = null;
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+        break;
+      }
+    }
+
+    if (!imageUrl) throw new Error("ИИ не сгенерировал изображение");
     
     res.json({ imageUrl });
   } catch (error: any) {
     console.error("Visualization Error:", error);
-    res.status(500).json({ error: "Не удалось создать визуализацию" });
+    let message = error.message || "Ошибка визуализации";
+    if (message.includes("429") || message.includes("quota")) {
+      message = "Превышен лимит на генерацию картинок. Попробуйте через пару минут.";
+    }
+    res.status(500).json({ error: message });
+  }
+});
+
+app.patch("/api/dreams/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { analysis } = req.body;
+    const { error } = await supabase.from("dreams").update({ analysis }).eq("id", id);
+    if (error) throw error;
+    res.json({ status: "ok" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/dreams/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from("dreams").delete().eq("id", id);
+    if (error) throw error;
+    res.json({ status: "ok" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
