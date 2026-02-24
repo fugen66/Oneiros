@@ -32,15 +32,10 @@ export const generateDreamImage = async (content: string) => {
     body: JSON.stringify({ content }),
   });
 
-  const data = await response.json().catch(() => ({ error: "Ошибка сервера" }));
-
   if (!response.ok) {
-    let msg = data.error || "Неизвестная ошибка";
-    if (msg.includes("429") || msg.includes("quota")) {
-      throw new Error("Превышен лимит на создание картинок. Попробуйте через 1-2 минуты.");
-    }
-    throw new Error(msg);
+    throw new Error("Не удалось создать визуализацию. Попробуйте позже.");
   }
 
+  const data = await response.json();
   return data.imageUrl;
 };
