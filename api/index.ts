@@ -49,34 +49,23 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", 
+      model: "gemini-3-flash-preview", // Используем правильную модель
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     res.json({ text: response.text });
   } catch (error: any) {
     console.error("Gemini Analyze Error:", error);
-    let message = error.message || "Ошибка ИИ";
-    // Try to extract a cleaner message if it's a stringified JSON
-    try {
-      if (message.includes('{"error":')) {
-        const match = message.match(/\{"error":.*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          if (parsed.error?.message) message = parsed.error.message;
-        }
-      }
-    } catch (e) {}
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: error.message || "Ошибка ИИ" });
   }
 });
 
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
-    // Очищаем текст от лишних символов, чтобы не сломать URL
-    const cleanContent = content.substring(0, 200).replace(/[^a-zA-Zа-яА-Я0-9 ]/g, '');
-    const prompt = encodeURIComponent(`surreal dream, ethereal atmosphere, ${cleanContent}, digital art, highly detailed`);
-    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+    // Очистка текста для безопасного URL
+    const safeContent = content ? content.substring(0, 300).replace(/[^\w\sа-яА-Я]/gi, ' ') : "mystical dream";
+    const prompt = encodeURIComponent(`surreal artistic dream visualization, ${safeContent}, cinematic, 4k`);
+    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&nologo=true&seed=${Date.now()}`;
     
     res.json({ imageUrl });
   } catch (error: any) {
@@ -87,16 +76,9 @@ app.post("/api/visualize", async (req, res) => {
 
 // Development vs Production
 if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
-  // Динамический импорт Vite, чтобы он не ломал билд в продакшене
   const { createServer: createViteServer } = await import("vite");
   const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
   app.use(vite.middlewares);
-}
-
-// Only listen if not in Vercel
-if (process.env.VERCEL !== "1") {
-  const PORT = 3000;
-  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
 }
 
 export default app;
