@@ -60,31 +60,17 @@ app.post("/api/analyze", async (req, res) => {
 
 app.post("/api/visualize", async (req, res) => {
   try {
-    const ai = getGeminiAI();
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-image-preview", // Самая мощная модель для генерации
-      contents: { parts: [{ text: `Surreal, ethereal, and artistic dream visualization: ${req.body.content}. Style: painterly, atmospheric, abstract, no text.` }] },
-      config: { 
-        imageConfig: { aspectRatio: "16:9", imageSize: "1K" }
-      },
-    });
+    const { content } = req.body;
+    // Используем Pollinations AI для генерации. Это бесплатно, без ключей и с хорошими лимитами.
+    // Мы кодируем описание сна в URL.
+    const prompt = encodeURIComponent(`surreal dream, ethereal atmosphere, ${content}, digital art, highly detailed, cinematic lighting`);
+    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&nologo=true&model=flux`;
     
-    // Ищем часть с картинкой
-    const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-    if (part) {
-      res.json({ imageUrl: `data:image/png;base64,${part.inlineData.data}` });
-    } else {
-      res.status(404).json({ error: "ИИ не смог создать изображение для этого описания" });
-    }
+    // Проверим, доступна ли картинка (быстрый запрос)
+    res.json({ imageUrl });
   } catch (error: any) {
-    console.error("Gemini Visual Error:", error);
-    // Если ошибка от Google пришла в виде JSON-строки, пробуем её очистить
-    let message = error.message;
-    try {
-      const parsed = JSON.parse(message);
-      if (parsed.error?.message) message = parsed.error.message;
-    } catch (e) {}
-    res.status(500).json({ error: message });
+    console.error("Visualization Error:", error);
+    res.status(500).json({ error: "Не удалось создать визуализацию" });
   }
 });
 
