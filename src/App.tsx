@@ -104,6 +104,7 @@ export default function App() {
               <motion.button
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 1 }}
                 onClick={() => setView('archive')}
                 className="flex items-center gap-2 bg-white/10 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-white/20 transition-all border border-white/20"
               >
@@ -112,6 +113,7 @@ export default function App() {
               <motion.button
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 1.1 }}
                 onClick={() => setIsAdding(true)}
                 className="flex items-center gap-2 bg-white text-black px-5 py-2 rounded-full text-sm font-bold hover:scale-105 transition-all shadow-xl shadow-white/10"
               >
