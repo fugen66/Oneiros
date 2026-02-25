@@ -1,6 +1,5 @@
 import React from 'react';
 import { Calendar, Trash2 } from 'lucide-react';
-import Markdown from 'react-markdown';
 import { Dream, Mood } from '../types';
 import { motion } from 'motion/react';
 
