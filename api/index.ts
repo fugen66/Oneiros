@@ -4,8 +4,6 @@ import { GoogleGenAI } from "@google/genai";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 // Initialize Supabase
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_ANON_KEY || "";
@@ -49,13 +47,15 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash",
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
-    res.json({ text: response.text });
+    
+    const text = response.text || "К сожалению, ИИ не смог проанализировать этот сон. Попробуйте изменить описание.";
+    res.json({ text });
   } catch (error: any) {
     console.error("Gemini Analyze Error:", error);
-    res.status(500).json({ error: "ИИ временно перегружен или недоступен. Попробуйте через минуту." });
+    res.status(500).json({ error: "ИИ временно недоступен или возникла ошибка при анализе. Попробуйте еще раз." });
   }
 });
 
