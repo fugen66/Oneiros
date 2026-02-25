@@ -1,8 +1,10 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
-import path from "url";
+import path from "path";
 import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Initialize Supabase
 const supabaseUrl = process.env.SUPABASE_URL || "";
