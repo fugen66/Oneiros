@@ -43,28 +43,23 @@ app.post("/api/dreams", async (req, res) => {
   }
 });
 
-// Анализ сна (Используем стабильную gemini-2.0-flash)
+// Анализ сна (Вернул ту самую модель, которая работала)
 app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", 
+      model: "gemini-3-flash-preview", 
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     
-    const text = response.text || "ИИ не смог сформировать ответ.";
-    res.json({ text });
+    res.json({ text: response.text || "ИИ не смог сформировать ответ." });
   } catch (error: any) {
     console.error("Analyze Error:", error);
-    let message = "Ошибка при анализе сна";
-    if (error.message?.includes("429")) {
-      message = "Превышен лимит запросов к ИИ. Пожалуйста, подождите минуту.";
-    }
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: error.message || "Ошибка при анализе сна" });
   }
 });
 
-// Визуализация сна
+// Визуализация сна (Та же модель, что и в чате)
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
@@ -92,16 +87,7 @@ app.post("/api/visualize", async (req, res) => {
     res.json({ imageUrl });
   } catch (error: any) {
     console.error("Visualize Error:", error);
-    let message = "Ошибка визуализации";
-    
-    // Обработка лимитов (429)
-    if (error.message?.includes("429") || error.message?.includes("quota")) {
-      message = "Бесплатный лимит на создание картинок исчерпан. Google просит подождать (обычно от 15 до 60 минут).";
-    } else if (error.message?.includes("safety")) {
-      message = "ИИ посчитал описание сна слишком деликатным для визуализации. Попробуйте изменить текст.";
-    }
-    
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: error.message || "Ошибка визуализации" });
   }
 });
 
