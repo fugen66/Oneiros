@@ -11,7 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const getGeminiAI = () => {
   const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
   if (!geminiKey) {
-    throw new Error("API_KEY не найден. Проверьте Environment Variables в Vercel.");
+    throw new Error("API_KEY не найден. Проверьте настройки в Vercel.");
   }
   return new GoogleGenAI({ apiKey: geminiKey });
 };
@@ -43,12 +43,12 @@ app.post("/api/dreams", async (req, res) => {
   }
 });
 
-// Анализ сна (Используем новейшую модель gemini-3-flash-preview)
+// Анализ сна (Используем стабильную gemini-2.0-flash)
 app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-2.0-flash", 
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     
@@ -56,11 +56,15 @@ app.post("/api/analyze", async (req, res) => {
     res.json({ text });
   } catch (error: any) {
     console.error("Analyze Error:", error);
-    res.status(500).json({ error: "Ошибка ИИ: " + (error.message || "Неизвестная ошибка") });
+    let message = "Ошибка при анализе сна";
+    if (error.message?.includes("429")) {
+      message = "Превышен лимит запросов к ИИ. Пожалуйста, подождите минуту.";
+    }
+    res.status(500).json({ error: message });
   }
 });
 
-// Визуализация сна (Используем gemini-2.5-flash-image)
+// Визуализация сна
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
@@ -88,7 +92,16 @@ app.post("/api/visualize", async (req, res) => {
     res.json({ imageUrl });
   } catch (error: any) {
     console.error("Visualize Error:", error);
-    res.status(500).json({ error: "Ошибка визуализации: " + (error.message || "Неизвестная ошибка") });
+    let message = "Ошибка визуализации";
+    
+    // Обработка лимитов (429)
+    if (error.message?.includes("429") || error.message?.includes("quota")) {
+      message = "Бесплатный лимит на создание картинок исчерпан. Google просит подождать (обычно от 15 до 60 минут).";
+    } else if (error.message?.includes("safety")) {
+      message = "ИИ посчитал описание сна слишком деликатным для визуализации. Попробуйте изменить текст.";
+    }
+    
+    res.status(500).json({ error: message });
   }
 });
 
