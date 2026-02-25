@@ -12,9 +12,6 @@ export const analyzeDream = async (content: string) => {
     if (msg.includes("503") || msg.includes("demand") || msg.includes("UNAVAILABLE")) {
       throw new Error("ИИ сейчас перегружен. Пожалуйста, подождите 30 секунд и попробуйте снова.");
     }
-    if (msg.includes("429") || msg.includes("quota")) {
-      throw new Error("Превышен лимит запросов. Пожалуйста, подождите минуту.");
-    }
     throw new Error(msg);
   }
   
