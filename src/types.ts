@@ -7,7 +7,6 @@ export interface Dream {
   image_url?: string;
   audio_url?: string;
   analysis?: string;
+  user_id?: string; // Вот это добавили
   created_at?: string;
 }
-
-export type Mood = 'peaceful' | 'intense' | 'lucid' | 'nightmare' | 'mysterious' | 'ordinary';
