@@ -11,7 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const getGeminiAI = () => {
   const geminiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
   if (!geminiKey) {
-    throw new Error("API_KEY не найден. Проверьте настройки в Vercel.");
+    throw new Error("API_KEY не найден. Проверьте настройки Environment Variables в Vercel.");
   }
   return new GoogleGenAI({ apiKey: geminiKey });
 };
@@ -43,12 +43,12 @@ app.post("/api/dreams", async (req, res) => {
   }
 });
 
-// Анализ сна (Вернул ту самую модель, которая работала)
+// Анализ сна (Используем Gemini 3.1 Pro)
 app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3.1-pro-preview", 
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     
@@ -59,19 +59,22 @@ app.post("/api/analyze", async (req, res) => {
   }
 });
 
-// Визуализация сна (Та же модель, что и в чате)
+// Визуализация сна (Используем Nano Banana Pro / Gemini 3 Pro Image)
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
     const ai = getGeminiAI();
     
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model: "gemini-3-pro-image-preview",
       contents: {
-        parts: [{ text: `A vivid, cinematic, and realistic visualization of this dream: "${content}". High quality, detailed textures.` }]
+        parts: [{ text: `A vivid, cinematic, and realistic visualization of this dream: "${content}". High quality, detailed textures, 4k resolution style.` }]
       },
       config: {
-        imageConfig: { aspectRatio: "16:9" }
+        imageConfig: { 
+          aspectRatio: "16:9",
+          imageSize: "1K" // Базовый размер для стабильности, можно поднять до 2K если ключ позволяет
+        }
       }
     });
 
@@ -83,7 +86,7 @@ app.post("/api/visualize", async (req, res) => {
       }
     }
 
-    if (!imageUrl) throw new Error("ИИ не сгенерировал изображение");
+    if (!imageUrl) throw new Error("ИИ не сгенерировал изображение. Возможно, сработали фильтры безопасности или исчерпан лимит.");
     res.json({ imageUrl });
   } catch (error: any) {
     console.error("Visualize Error:", error);
