@@ -43,12 +43,12 @@ app.post("/api/dreams", async (req, res) => {
   }
 });
 
-// Анализ сна (Используем Gemini 3.1 Pro)
+// Анализ сна (Используем максимально стабильную Flash модель)
 app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getGeminiAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview", 
+      model: "gemini-3-flash-preview", 
       contents: `Ты — эксперт по психоанализу и толкованию сновидений. Проанализируй сон: ${req.body.content}. Ответ на русском в Markdown.`,
     });
     
@@ -59,22 +59,19 @@ app.post("/api/analyze", async (req, res) => {
   }
 });
 
-// Визуализация сна (Используем Nano Banana Pro / Gemini 3 Pro Image)
+// Визуализация сна (Используем gemini-2.5-flash-image)
 app.post("/api/visualize", async (req, res) => {
   try {
     const { content } = req.body;
     const ai = getGeminiAI();
     
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-image-preview",
+      model: "gemini-2.5-flash-image",
       contents: {
-        parts: [{ text: `A vivid, cinematic, and realistic visualization of this dream: "${content}". High quality, detailed textures, 4k resolution style.` }]
+        parts: [{ text: `A vivid, cinematic, and realistic visualization of this dream: "${content}". High quality, detailed textures.` }]
       },
       config: {
-        imageConfig: { 
-          aspectRatio: "16:9",
-          imageSize: "1K" // Базовый размер для стабильности, можно поднять до 2K если ключ позволяет
-        }
+        imageConfig: { aspectRatio: "16:9" }
       }
     });
 
@@ -86,7 +83,7 @@ app.post("/api/visualize", async (req, res) => {
       }
     }
 
-    if (!imageUrl) throw new Error("ИИ не сгенерировал изображение. Возможно, сработали фильтры безопасности или исчерпан лимит.");
+    if (!imageUrl) throw new Error("ИИ не сгенерировал изображение.");
     res.json({ imageUrl });
   } catch (error: any) {
     console.error("Visualize Error:", error);
