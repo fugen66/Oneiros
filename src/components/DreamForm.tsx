@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Mic, Send, Sparkles, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { analyzeDream, generateDreamImage } from '../services/gemini';
+import { analyzeDream } from '../services/gemini';
 import { Dream, Mood } from '../types';
 
 interface DreamFormProps {
@@ -23,9 +23,7 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<Mood>('ordinary');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isVisualizing, setIsVisualizing] = useState(false);
   const [analysis, setAnalysis] = useState<string | undefined>();
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   
@@ -77,21 +75,6 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
     }
   };
 
-  const handleVisualize = async () => {
-    if (!content) return;
-    setIsVisualizing(true);
-    setError(null);
-    try {
-      const result = await generateDreamImage(content);
-      if (result) setImageUrl(result);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Ошибка при визуализации");
-    } finally {
-      setIsVisualizing(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
@@ -100,7 +83,6 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
       date: new Date().toLocaleDateString('ru-RU'),
       mood,
       analysis,
-      image_url: imageUrl,
     });
   };
 
@@ -182,16 +164,6 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
             Анализ смысла
           </button>
 
-          <button
-            type="button"
-            onClick={handleVisualize}
-            disabled={isVisualizing || !content}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-50 transition-all border border-white/10"
-          >
-            {isVisualizing ? <Loader2 className="animate-spin" size={18} /> : <ImageIcon size={18} className="text-dream-accent" />}
-            Визуализировать
-          </button>
-
           <div className="flex-grow" />
 
           <button
@@ -214,26 +186,18 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
         )}
 
         <AnimatePresence>
-          {(analysis || imageUrl) && (
+          {analysis && (
             <motion.div 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-white/10"
+              className="pt-6 border-t border-white/10"
             >
-              {imageUrl && (
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-widest text-white/50 font-semibold">Визуализация</label>
-                  <img src={imageUrl} alt="Визуализация сна" className="w-full rounded-2xl border border-white/10 shadow-2xl" />
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-widest text-white/50 font-semibold">Инсайт</label>
+                <div className="bg-white/5 rounded-2xl p-6 border border-white/10 text-lg leading-relaxed text-white/70 italic serif">
+                  {analysis}
                 </div>
-              )}
-              {analysis && (
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-widest text-white/50 font-semibold">Инсайт</label>
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-sm leading-relaxed text-white/70 italic">
-                    {analysis}
-                  </div>
-                </div>
-              )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
