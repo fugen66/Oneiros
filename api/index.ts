@@ -55,37 +55,45 @@ app.post("/api/dreams", async (req, res) => {
     
     if (!error) return res.json({ id: data[0].id });
 
-    // 2. Если ошибка "колонки не существует" (42703), пробуем более простую версию
-    if (error.code === '42703') {
-      console.warn("Missing columns, trying fallback insert...");
+    // 2. Если ошибка "колонки не существует" (42703 или текст ошибки)
+    if (error.code === '42703' || error.message?.includes('column')) {
+      console.warn("Missing columns detected. Filtering data...");
       
-      // Пробуем только те поля, которые были в самой первой версии
-      const baseData = { 
+      // Базовый набор полей, который ТОЧНО есть в таблице
+      const safeData: any = { 
         title: title || "Без названия", 
         content: content || "", 
         date: date || new Date().toLocaleDateString('ru-RU'), 
         mood: mood || "ordinary" 
       };
+
+      // Пробуем добавить анализ, если он есть
+      if (analysis) safeData.analysis = analysis;
       
-      // Добавляем анализ, если он есть, вдруг эта колонка существует
       const { data: retryData, error: retryError } = await supabase
         .from("dreams")
-        .insert([baseData])
+        .insert([safeData])
         .select();
         
       if (retryError) {
-        console.error("Fallback insert failed:", retryError);
-        throw new Error(`Ошибка базы данных: ${retryError.message}`);
+        // Если даже так не выходит, пробуем САМЫЙ минимум
+        const ultraSafeData = { title: safeData.title, content: safeData.content };
+        const { data: finalData, error: finalError } = await supabase
+          .from("dreams")
+          .insert([ultraSafeData])
+          .select();
+          
+        if (finalError) throw finalError;
+        return res.json({ id: finalData[0].id });
       }
       
       return res.json({ id: retryData[0].id });
     }
     
-    // Если ошибка другая — пробрасываем её
     throw error;
   } catch (error: any) {
     console.error("Create dream error:", error);
-    res.status(500).json({ error: error.message || "Неизвестная ошибка сервера" });
+    res.status(500).json({ error: `Ошибка базы данных: ${error.message || "Неизвестная ошибка"}` });
   }
 });
 
