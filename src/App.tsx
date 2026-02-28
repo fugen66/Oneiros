@@ -39,9 +39,16 @@ export default function App() {
         }
       });
       const data = await response.json();
-      setDreams(data);
+      
+      if (Array.isArray(data)) {
+        setDreams(data);
+      } else {
+        console.error('Server returned non-array data:', data);
+        setDreams([]);
+      }
     } catch (error) {
       console.error('Failed to fetch dreams:', error);
+      setDreams([]);
     } finally {
       setIsLoading(false);
     }
