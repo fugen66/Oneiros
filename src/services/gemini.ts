@@ -11,7 +11,10 @@ export const analyzeDream = async (content: string) => {
     data = JSON.parse(text);
   } catch (e) {
     console.error("Server response was not JSON:", text);
-    throw new Error("Сервер прислал некорректный ответ. Возможно, превышено время ожидания или не настроен API ключ.");
+    if (text.includes("504") || text.includes("Timeout")) {
+      throw new Error("Сервер Vercel не успел ответить (Таймаут). Попробуйте сократить описание сна.");
+    }
+    throw new Error("Ошибка связи с сервером. Пожалуйста, проверьте настройки API ключа в Vercel.");
   }
   
   if (!response.ok) {
