@@ -50,30 +50,42 @@ app.post("/api/dreams", async (req, res) => {
   try {
     const { title, content, date, mood, image_url, audio_url, analysis, user_id } = req.body;
     
-    // Проверяем структуру таблицы (берем одну запись или просто пробуем вставить)
-    // Самый надежный способ - вставить только базовые поля, если расширенные могут отсутствовать
-    const insertData: any = { title, content, date, mood, analysis };
-    
-    // Пробуем добавить user_id и image_url, если они переданы
-    // В Supabase если колонки нет, запрос упадет. 
-    // Чтобы этого избежать, мы могли бы сначала проверить схему, но это медленно.
-    // Просто сделаем вставку максимально безопасной.
-    
+    // 1. Пробуем вставить всё сразу
     const { data, error } = await supabase.from("dreams").insert([req.body]).select();
     
-    if (error && error.code === '42703') { // Column does not exist
-      // Пробуем вставить без новых колонок
-      const fallbackData = { title, content, date, mood, analysis, audio_url };
-      const { data: retryData, error: retryError } = await supabase.from("dreams").insert([fallbackData]).select();
-      if (retryError) throw retryError;
+    if (!error) return res.json({ id: data[0].id });
+
+    // 2. Если ошибка "колонки не существует" (42703), пробуем более простую версию
+    if (error.code === '42703') {
+      console.warn("Missing columns, trying fallback insert...");
+      
+      // Пробуем только те поля, которые были в самой первой версии
+      const baseData = { 
+        title: title || "Без названия", 
+        content: content || "", 
+        date: date || new Date().toLocaleDateString('ru-RU'), 
+        mood: mood || "ordinary" 
+      };
+      
+      // Добавляем анализ, если он есть, вдруг эта колонка существует
+      const { data: retryData, error: retryError } = await supabase
+        .from("dreams")
+        .insert([baseData])
+        .select();
+        
+      if (retryError) {
+        console.error("Fallback insert failed:", retryError);
+        throw new Error(`Ошибка базы данных: ${retryError.message}`);
+      }
+      
       return res.json({ id: retryData[0].id });
     }
     
-    if (error) throw error;
-    res.json({ id: data[0].id });
+    // Если ошибка другая — пробрасываем её
+    throw error;
   } catch (error: any) {
     console.error("Create dream error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || "Неизвестная ошибка сервера" });
   }
 });
 
