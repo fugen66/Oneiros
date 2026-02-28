@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Moon, Sparkles, Ghost, Compass, Archive, ArrowLeft } from 'lucide-react';
+import { Plus, Moon, Sparkles, Ghost, Compass, Archive, ArrowLeft, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DreamForm from './components/DreamForm';
 import DreamCard from './components/DreamCard';
@@ -22,6 +22,7 @@ export default function App() {
       id = Math.random().toString(36).substring(2, 15);
       localStorage.setItem('dream_user_id', id);
     }
+    console.log('Client User ID:', id);
     setUserId(id);
   }, []);
 
@@ -29,7 +30,7 @@ export default function App() {
     if (userId) {
       fetchDreams();
     }
-  }, [userId]);
+  }, [view, userId]);
 
   const fetchDreams = async () => {
     try {
@@ -199,9 +200,18 @@ export default function App() {
               exit={{ opacity: 0, y: 20 }}
               className="space-y-12"
             >
-              <div className="flex items-center gap-4 border-b border-white/10 pb-6">
-                <Archive className="text-dream-accent" size={32} />
-                <h2 className="serif text-4xl text-white">Архив сновидений</h2>
+              <div className="flex items-center justify-between border-b border-white/10 pb-6">
+                <div className="flex items-center gap-4">
+                  <Archive className="text-dream-accent" size={32} />
+                  <h2 className="serif text-4xl text-white">Архив сновидений</h2>
+                </div>
+                <button 
+                  onClick={fetchDreams}
+                  className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-dream-accent transition-all"
+                  title="Обновить"
+                >
+                  <Loader2 className={isLoading ? "animate-spin" : ""} size={20} />
+                </button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -285,6 +295,10 @@ export default function App() {
           <span className="text-[8px] uppercase tracking-widest text-white/20">Снов</span>
         </div>
       </nav>
+      
+      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 text-[6px] uppercase tracking-[0.2em] text-white/5 pointer-events-none">
+        ID: {userId}
+      </div>
     </div>
   );
 }
