@@ -31,6 +31,9 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+
   if (!dream) return null;
 
   const analysis = localAnalysis || dream.analysis;
@@ -63,8 +66,14 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
     setIsEditingTitle(true);
   };
 
+  const triggerSavedFeedback = () => {
+    setShowSavedFeedback(true);
+    setTimeout(() => setShowSavedFeedback(false), 2000);
+  };
+
   const saveTitle = async () => {
     if (!editedTitle.trim()) return;
+    setIsSaving(true);
     try {
       if (dream.id) {
         await fetch(`/api/dreams/${dream.id}`, {
@@ -73,14 +82,18 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
           body: JSON.stringify({ title: editedTitle }),
         });
         setLocalTitle(editedTitle);
+        triggerSavedFeedback();
       }
       setIsEditingTitle(false);
     } catch (err) {
       setError("Не удалось сохранить название");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const saveImage = async (url: string) => {
+    setIsSaving(true);
     try {
       if (dream.id) {
         await fetch(`/api/dreams/${dream.id}`, {
@@ -89,10 +102,13 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
           body: JSON.stringify({ image_url: url }),
         });
         setLocalImage(url);
+        triggerSavedFeedback();
       }
       setIsEditingImage(false);
     } catch (err) {
       setError("Не удалось сохранить изображение");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -124,6 +140,21 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
           className="glass max-w-5xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl shadow-dream-accent/10"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Saved Feedback Toast */}
+          <AnimatePresence>
+            {showSavedFeedback && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest z-[150] shadow-xl shadow-emerald-500/20 flex items-center gap-2"
+              >
+                <Check size={14} />
+                Сохранено
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <button 
             onClick={onClose}
             className="fixed md:absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all z-[110] text-white border border-white/10"
@@ -146,12 +177,12 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
               
-              <div className="absolute bottom-6 right-6 opacity-0 group-hover/image:opacity-100 transition-opacity flex gap-2">
+              <div className="absolute bottom-6 right-6 transition-opacity flex gap-2">
                 <button 
                   onClick={() => setIsEditingImage(!isEditingImage)}
-                  className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white border border-white/10 flex items-center gap-2 text-xs font-bold uppercase tracking-widest"
+                  className="p-3 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white border border-white/20 flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-all"
                 >
-                  <Edit2 size={16} />
+                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16} />}
                   {currentImage ? 'Изменить фото' : 'Добавить фото'}
                 </button>
               </div>
@@ -176,9 +207,10 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
                         />
                         <button 
                           onClick={() => saveImage(imageUrl)}
-                          className="p-2 bg-dream-accent rounded-lg text-white"
+                          disabled={isSaving}
+                          className="p-2 bg-dream-accent rounded-lg text-white disabled:opacity-50"
                         >
-                          <Check size={16} />
+                          {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                         </button>
                       </div>
                     </div>
@@ -188,9 +220,10 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
                     </div>
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/20 rounded-xl text-xs text-white/60 flex items-center justify-center gap-2 transition-all"
+                      disabled={isSaving}
+                      className="w-full py-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/20 rounded-xl text-xs text-white/60 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                     >
-                      <Upload size={16} />
+                      {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                       Загрузить файл
                     </button>
                     <input 
@@ -232,9 +265,10 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
                       />
                       <button 
                         onClick={saveTitle}
-                        className="p-3 bg-dream-accent rounded-xl text-white hover:scale-105 transition-transform"
+                        disabled={isSaving}
+                        className="p-3 bg-dream-accent rounded-xl text-white hover:scale-105 transition-transform disabled:opacity-50"
                       >
-                        <Check size={24} />
+                        {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Check size={24} />}
                       </button>
                     </div>
                   ) : (
@@ -244,7 +278,8 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
                       </h2>
                       <button 
                         onClick={startEditingTitle}
-                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/30 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/50 hover:text-white transition-all"
+                        title="Изменить название"
                       >
                         <Edit2 size={20} />
                       </button>
@@ -303,6 +338,17 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
                     <p className="text-red-400 text-sm text-center max-w-4xl">{error}</p>
                   )}
                 </section>
+
+                {/* Explicit Save Button at the bottom */}
+                <div className="pt-12 flex justify-center max-w-4xl">
+                  <button 
+                    onClick={onClose}
+                    className="bg-white/10 hover:bg-white/20 text-white px-12 py-4 rounded-2xl text-sm font-bold uppercase tracking-widest transition-all border border-white/10 flex items-center gap-3"
+                  >
+                    <Check size={18} className="text-emerald-400" />
+                    Завершить редактирование
+                  </button>
+                </div>
               </div>
             </div>
           </div>
