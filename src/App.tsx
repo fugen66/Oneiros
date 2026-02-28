@@ -57,9 +57,13 @@ export default function App() {
       if (response.ok) {
         setIsAdding(false);
         fetchDreams();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save dream');
       }
     } catch (error) {
       console.error('Failed to save dream:', error);
+      throw error;
     }
   };
 
