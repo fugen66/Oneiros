@@ -95,7 +95,7 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
         analysis,
       });
     } catch (err: any) {
-      setError("Не удалось сохранить сон. Попробуйте еще раз.");
+      setError(err.message || "Не удалось сохранить сон. Попробуйте еще раз.");
     } finally {
       setIsSaving(false);
     }
