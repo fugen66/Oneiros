@@ -29,6 +29,8 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
   
   const recognitionRef = useRef<any>(null);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleStartRecording = () => {
     if (!('webkitSpeechRecognition' in window)) {
       alert('Распознавание речи не поддерживается в этом браузере.');
@@ -75,15 +77,28 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      title: title || 'Без названия',
-      content,
-      date: new Date().toLocaleDateString('ru-RU'),
-      mood,
-      analysis,
-    });
+    if (!content) {
+      setError("Пожалуйста, опишите ваш сон");
+      return;
+    }
+    
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onSave({
+        title: title || 'Без названия',
+        content,
+        date: new Date().toLocaleDateString('ru-RU'),
+        mood,
+        analysis,
+      });
+    } catch (err: any) {
+      setError("Не удалось сохранить сон. Попробуйте еще раз.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -157,7 +172,7 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
           <button
             type="button"
             onClick={handleAnalyze}
-            disabled={isAnalyzing || !content}
+            disabled={isAnalyzing || !content || isSaving}
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-50 transition-all border border-white/10"
           >
             {isAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} className="text-dream-accent" />}
@@ -168,10 +183,11 @@ export default function DreamForm({ onSave, onClose }: DreamFormProps) {
 
           <button
             type="submit"
-            className="flex items-center gap-2 px-8 py-3 rounded-xl bg-dream-accent text-white font-semibold hover:scale-105 transition-all shadow-lg shadow-dream-accent/20"
+            disabled={isSaving || !content}
+            className="flex items-center gap-2 px-8 py-3 rounded-xl bg-dream-accent text-white font-semibold hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition-all shadow-lg shadow-dream-accent/20"
           >
-            <Send size={18} />
-            Сохранить в дневник
+            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+            {isSaving ? 'Сохранение...' : 'Сохранить в дневник'}
           </button>
         </div>
 
