@@ -27,22 +27,32 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.get("/api/dreams", async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
-    let query = supabase.from("dreams").select("*").order("created_at", { ascending: false });
     
-    const { data, error } = await query;
-    if (error) throw error;
+    // Пробуем получить все записи.
+    let { data, error } = await supabase.from("dreams").select("*");
+    
+    if (error) {
+      console.error("Supabase select error:", error);
+      throw error;
+    }
 
-    // Фильтруем на стороне сервера, если колонка существует в данных
-    // Это предотвращает ошибку 42703 (column does not exist) в Supabase
-    if (userId && data && data.length > 0 && 'user_id' in data[0]) {
+    if (!data) return res.json([]);
+
+    console.log(`Fetched ${data.length} dreams for user ${userId}`);
+
+    // Сортируем на стороне сервера
+    data.sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
+
+    // Фильтруем по пользователю, если колонка существует
+    if (userId && data.length > 0 && 'user_id' in data[0]) {
       const filteredData = data.filter((d: any) => d.user_id === userId || !d.user_id);
       return res.json(filteredData);
     }
 
     res.json(data);
   } catch (error: any) {
-    console.error("Fetch dreams error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Fetch dreams error details:", error);
+    res.status(500).json({ error: error.message || "Ошибка при получении списка снов" });
   }
 });
 
