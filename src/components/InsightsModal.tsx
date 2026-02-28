@@ -106,12 +106,22 @@ export default function InsightsModal({ isOpen, onClose, dreams }: InsightsModal
                 </div>
               </div>
             ) : (
-              <div className="markdown-body prose prose-invert prose-lg max-w-none text-white/80 leading-relaxed bg-white/5 p-10 md:p-16 rounded-[3rem] border border-white/10 shadow-inner">
-                <Markdown>{insights}</Markdown>
-                <div className="mt-12 pt-8 border-t border-white/5 flex justify-center">
+              <div className="space-y-8">
+                <div className="markdown-body prose prose-invert prose-lg max-w-none text-white/80 leading-relaxed bg-white/5 p-10 md:p-16 rounded-[3rem] border border-white/10 shadow-inner">
+                  <Markdown>{insights}</Markdown>
+                </div>
+                
+                <div className="flex flex-col items-center gap-6">
+                  <button 
+                    onClick={onClose}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-12 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-emerald-500/20 flex items-center gap-3 uppercase tracking-widest text-sm"
+                  >
+                    Сохранить в память
+                  </button>
+                  
                   <button 
                     onClick={() => setInsights(null)}
-                    className="text-xs uppercase tracking-widest text-white/30 hover:text-dream-accent transition-colors"
+                    className="text-[10px] uppercase tracking-widest text-white/20 hover:text-dream-accent transition-colors"
                   >
                     Перезапустить анализ
                   </button>
