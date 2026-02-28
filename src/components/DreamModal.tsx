@@ -276,13 +276,22 @@ export default function DreamModal({ dream, onClose }: DreamModalProps) {
                       <h2 className="serif text-5xl md:text-7xl text-white leading-tight tracking-tight max-w-4xl">
                         {title}
                       </h2>
-                      <button 
-                        onClick={startEditingTitle}
-                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/50 hover:text-white transition-all"
-                        title="Изменить название"
-                      >
-                        <Edit2 size={20} />
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button 
+                          onClick={startEditingTitle}
+                          className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/50 hover:text-white transition-all"
+                          title="Изменить название"
+                        >
+                          <Edit2 size={20} />
+                        </button>
+                        <button 
+                          onClick={onClose}
+                          className="p-2 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg text-emerald-400 border border-emerald-500/30 transition-all text-[8px] uppercase tracking-widest font-bold"
+                          title="Сохранить изменения"
+                        >
+                          Сохранить
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
